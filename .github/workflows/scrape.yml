@@ -1,4 +1,5 @@
-name: Scrape crypto signals
+
+name: Scrape and publish crypto dashboard
 
 on:
   workflow_dispatch:
@@ -7,36 +8,56 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-  group: crypto-scraper
+  group: crypto-dashboard
   cancel-in-progress: false
 
 jobs:
-  scrape:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Set up Node.js
-  uses: actions/setup-node@v4
-  with:
-    node-version: "20"
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Install dependencies
         run: npm install
-      - name: Run tests
+
+      - name: Test scraper
         run: npm test
+
       - name: Scrape public sources
         run: npm run scrape
         env:
-          REQUEST_TIMEOUT_MS: ${{ vars.REQUEST_TIMEOUT_MS }}
-          STALE_AFTER_MINUTES: ${{ vars.STALE_AFTER_MINUTES }}
-          STRICT_SOURCES: ${{ vars.STRICT_SOURCES }}
-      - name: Upload JSON output and diagnostics
-        uses: actions/upload-artifact@v4
+          REQUEST_TIMEOUT_MS: "20000"
+          STALE_AFTER_MINUTES: "15"
+          STRICT_SOURCES: "false"
+
+      - name: Prepare website data
+        run: |
+          mkdir -p site/data
+          cp output/signals-latest.json site/data/signals.json
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v4
         with:
-          name: crypto-signals-${{ github.run_number }}
-          path: output/*.json
-          if-no-files-found: error
-          retention-days: 14
+          path: site
+
+      - name: Publish website
+        id: deployment
+        uses: actions/deploy-pages@v4
