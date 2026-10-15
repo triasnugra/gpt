@@ -1,0 +1,21 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { aggregateByTicker } from "../src/aggregate.js";
+
+const fetchedAt = "2026-10-14T09:17:12.000Z";
+test("groups matching tickers and marks conflicting values", () => {
+  const out = aggregateByTicker([
+    { sourceId:"a", url:"https://a.test", fetchedAt, signals:[{ticker:"TRX",entryLimit:0.327,slPrice:0.311,status:"Aktif"}] },
+    { sourceId:"b", url:"https://b.test", fetchedAt, signals:[{ticker:"TRX",entryLimit:0.328,slPrice:0.311,status:"Aktif"}] }
+  ], 15, new Date(fetchedAt));
+  assert.equal(out.count, 1);
+  assert.equal(out.coins.TRX.validation.sourceCount, 2);
+  assert.equal(out.coins.TRX.validation.conflicts.length, 1);
+});
+
+test("marks old signals stale", () => {
+  const out = aggregateByTicker([
+    { sourceId:"a", url:"https://a.test", fetchedAt:"2026-10-14T08:00:00.000Z", signals:[{ticker:"SOL",entryLimit:100,status:"Pending"}] }
+  ], 15, new Date("2026-10-14T09:00:00.000Z"));
+  assert.equal(out.coins.SOL.validation.stale, true);
+});
