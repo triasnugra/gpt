@@ -39,7 +39,17 @@ jobs:
         run: npm test
 
       - name: Scrape public sources
-        run: npm run scrape
+        run: |
+          npm run scrape
+          echo ""
+          echo "========== SCRAPER DIAGNOSTICS =========="
+          if [ -f output/diagnostics-latest.json ]; then
+            cat output/diagnostics-latest.json
+          else
+            echo "File output/diagnostics-latest.json tidak ditemukan."
+            ls -la output || true
+          fi
+
         env:
           REQUEST_TIMEOUT_MS: "20000"
           STALE_AFTER_MINUTES: "15"
