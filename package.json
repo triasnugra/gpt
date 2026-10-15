@@ -1,0 +1,16 @@
+{
+  "name": "crypto-signal-aggregator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Public-site crypto signal scraper, parser, validator, and ticker aggregator",
+  "type": "module",
+  "scripts": {
+    "scrape": "node src/index.js",
+    "test": "node --test",
+    "check": "node --check src/index.js && node --check src/aggregate.js && node --check src/normalize.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "cheerio": "^1.0.0"
+  }
+}
