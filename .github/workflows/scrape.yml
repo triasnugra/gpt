@@ -1,0 +1,43 @@
+name: Scrape crypto signals
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crypto-scraper
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm install
+      - name: Run tests
+        run: npm test
+      - name: Scrape public sources
+        run: npm run scrape
+        env:
+          REQUEST_TIMEOUT_MS: ${{ vars.REQUEST_TIMEOUT_MS }}
+          STALE_AFTER_MINUTES: ${{ vars.STALE_AFTER_MINUTES }}
+          STRICT_SOURCES: ${{ vars.STRICT_SOURCES }}
+      - name: Upload JSON output and diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-signals-${{ github.run_number }}
+          path: output/*.json
+          if-no-files-found: error
+          retention-days: 14
