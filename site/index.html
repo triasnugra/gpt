@@ -1,0 +1,105 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Asgra Signal Monitor</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #071522;
+      color: #e6edf5;
+      font-family: system-ui, sans-serif;
+    }
+    main { max-width: 1100px; margin: auto; }
+    h1 { margin-bottom: 8px; }
+    .muted { color: #9aafc3; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .card {
+      padding: 20px;
+      border: 1px solid #244258;
+      border-radius: 16px;
+      background: #0d2233;
+    }
+    .price { font-size: 26px; font-weight: 700; }
+    .status { color: #34d399; font-weight: 700; }
+    .warning { color: #fbbf24; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Asgra Signal Monitor</h1>
+  <div class="muted" id="updated">Memuat data...</div>
+  <div class="grid" id="signals"></div>
+</main>
+
+<script>
+async function loadSignals() {
+  const updated = document.getElementById("updated");
+  const container = document.getElementById("signals");
+
+  try {
+    const response = await fetch("./data/signals.json?t=" + Date.now());
+    if (!response.ok) throw new Error("HTTP " + response.status);
+
+    const data = await response.json();
+    updated.textContent =
+      "Pembaruan data: " + (data.generatedAtWib || data.generatedAtUtc || "Tidak diketahui");
+
+    const coins = Object.values(data.coins || {});
+    if (!coins.length) {
+      container.textContent =
+        "Belum ada sinyal yang berhasil diekstrak. Periksa diagnostik scraper.";
+      return;
+    }
+
+    container.replaceChildren();
+
+    for (const coin of coins) {
+      const card = document.createElement("section");
+      card.className = "card";
+
+      const title = document.createElement("h2");
+      title.textContent = coin.ticker || "Unknown";
+
+      const status = document.createElement("p");
+      status.className = "status";
+      status.textContent = "Status: " + (coin.status || "unknown");
+
+      const details = document.createElement("p");
+      details.className = "muted";
+      details.textContent =
+        "Entry: " + (coin.entry?.price ?? "—") +
+        " | SL: " + (coin.stopLoss?.price ?? "—") +
+        " | TP: " + ((coin.takeProfit || [])
+          .map(tp => tp.label + " " + tp.price).join(", ") || "—");
+
+      const validation = document.createElement("p");
+      validation.className =
+        coin.validation?.stale || coin.validation?.conflicts?.length
+          ? "warning" : "muted";
+      validation.textContent = [
+        coin.validation?.stale ? "Data kedaluwarsa" : "Data tidak ditandai kedaluwarsa",
+        ...(coin.validation?.conflicts || [])
+      ].join(" · ");
+
+      card.append(title, status, details, validation);
+      container.append(card);
+    }
+  } catch (error) {
+    updated.textContent = "Gagal memuat data: " + error.message;
+  }
+}
+
+loadSignals();
+setInterval(loadSignals, 60000);
+</script>
+</body>
+</html>
